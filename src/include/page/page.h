@@ -57,6 +57,7 @@ class Page {
   inline void SetLSN(lsn_t lsn) { memcpy(GetData() + OFFSET_LSN, &lsn, sizeof(lsn_t)); }
 
  protected:
+  // 预处理器，静态断言，在编译器判断page_id_t和lsn_t的大小是不是4字节
   static_assert(sizeof(page_id_t) == 4);
   static_assert(sizeof(lsn_t) == 4);
 

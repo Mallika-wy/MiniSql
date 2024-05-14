@@ -10,10 +10,13 @@ class Column {
   friend class Schema;
 
  public:
+	// 构造函数：int、float类型数据字段
   Column(std::string column_name, TypeId type, uint32_t index, bool nullable, bool unique);
 
+	// 构造函数：char类型数据字段
   Column(std::string column_name, TypeId type, uint32_t length, uint32_t index, bool nullable, bool unique);
 
+	// 构造函数，实现复制
   Column(const Column *other);
 
   std::string GetName() const { return name_; }
@@ -30,10 +33,15 @@ class Column {
 
   TypeId GetType() const { return type_; }
 
+	// 序列化
   uint32_t SerializeTo(char *buf) const;
 
+	// 获得长度
   uint32_t GetSerializedSize() const;
 
+	// 反序列化
+	// Column *&column是一个指针引用
+	// Column* &column这样写或许更好理解
   static uint32_t DeserializeFrom(char *buf, Column *&column);
 
  private:

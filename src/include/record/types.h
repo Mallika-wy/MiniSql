@@ -3,11 +3,12 @@
 
 #include <cmath>
 #include <cstdint>
-#include <exception>
+#include <exception> // 异常处理
 
 #include "common/config.h"
 #include "record/type_id.h"
 
+// 告诉编译器，有一个名为Field的类
 class Field;
 
 enum CmpBool { kFalse = 0, kTrue, kNull };
@@ -20,6 +21,7 @@ class Type {
  public:
   explicit Type(TypeId type_id) : type_id_(type_id) {}
 
+	// 生成默认析构函数
   virtual ~Type() = default;
 
   static uint32_t GetTypeSize(TypeId type_id) {
@@ -33,6 +35,7 @@ class Type {
       default:
         break;
     }
+		// 抛出异常，结束程序，没有catch
     throw "Unknown field type.";
   }
 

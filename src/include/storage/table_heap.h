@@ -71,13 +71,19 @@ class TableHeap {
    */
   bool GetTuple(Row *row, Txn *txn);
 
+	// 释放掉堆表
   void FreeTableHeap() {
+		// first_page_id是成员变量
     auto next_page_id = first_page_id_;
+		// 需要将所有page都释放掉，所以使用循环
     while (next_page_id != INVALID_PAGE_ID) {
       auto old_page_id = next_page_id;
+			// 通过Fetch取回来的page不是TablePage类型，所以需要强制类型转化
       auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(old_page_id));
       assert(page != nullptr);
+			// tablepage具有获得下一个pageid的函数
       next_page_id = page->GetNextPageId();
+			// 释放掉意味着我们不需要这页page，所以将之取消固定，并且delete掉
       buffer_pool_manager_->UnpinPage(old_page_id, false);
       buffer_pool_manager_->DeletePage(old_page_id);
     }
@@ -128,8 +134,8 @@ class TableHeap {
   BufferPoolManager *buffer_pool_manager_;
   page_id_t first_page_id_;
   Schema *schema_;
-  [[maybe_unused]] LogManager *log_manager_;
-  [[maybe_unused]] LockManager *lock_manager_;
+  LogManager *log_manager_;
+  LockManager *lock_manager_;
 };
 
 #endif  // MINISQL_TABLE_HEAP_H

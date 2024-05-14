@@ -18,6 +18,8 @@
   DISALLOW_COPY(cname);               \
   DISALLOW_MOVE(cname);
 
+// 往内存（由Buf指定的位置）中写入一个指定类型(Type)的数据(Data)
+// reinterpret_cast强制类型转换
 #define MACH_WRITE_TO(Type, Buf, Data)       \
   do {                                       \
     *reinterpret_cast<Type *>(Buf) = (Data); \
@@ -29,8 +31,11 @@
     memcpy(Buf, Str.c_str(), Str.length()); \
   } while (0)
 
+// 将内存(由Buf指定的位置)转化成指定类型(Type)的数据
 #define MACH_READ_FROM(Type, Buf) (*reinterpret_cast<const Type *>(Buf))
+// 将内存(由Buf指定的位置)转化成uint32_t类型的数据
 #define MACH_READ_UINT32(Buf) MACH_READ_FROM(uint32_t, (Buf))
+// 将内存(由Buf指定的位置)转化成int32_t类型的数据
 #define MACH_READ_INT32(Buf) MACH_READ_FROM(int32_t, (Buf))
 
 #define MACH_STR_SERIALIZED_SIZE(Str) (4 + Str.length())

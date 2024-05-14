@@ -8,17 +8,21 @@ inline int CompareStrings(const char *str1, int len1, const char *str2, int len2
   assert(len1 >= 0);
   assert(str2 != nullptr);
   assert(len2 >= 0);
+	// memcmp二进制比较
+	// static_cast<type>强制转换成type类型
   int ret = memcmp(str1, str2, static_cast<size_t>(std::min(len1, len2)));
-  if (ret == 0 && len1 != len2) {
+  // 0 ：str1 == str2  1 ：str1 > str2
+	if (ret == 0 && len1 != len2) {
     ret = len1 - len2;
   }
   return ret;
 }
 
 // ==============================Type=============================
-
+// type_singletons_数组初始化，它是Type*类型
 Type *Type::type_singletons_[] = {new Type(TypeId::kTypeInvalid), new TypeInt(), new TypeFloat(), new TypeChar()};
 
+// Type类型是接口，所以下面的函数并没有实现，我们也不会去调用
 uint32_t Type::SerializeTo(const Field &field, char *buf) const {
   ASSERT(false, "SerializeTo not implemented.");
   return 0;
@@ -75,7 +79,7 @@ CmpBool Type::CompareGreaterThanEquals(const Field &left, const Field &right) co
 }
 
 // ==============================TypeInt=================================
-
+// int类型数据的序列化
 uint32_t TypeInt::SerializeTo(const Field &field, char *buf) const {
   if (!field.IsNull()) {
     MACH_WRITE_TO(int32_t, buf, field.value_.integer_);
@@ -84,6 +88,7 @@ uint32_t TypeInt::SerializeTo(const Field &field, char *buf) const {
   return 0;
 }
 
+// int类型数据的反序列化
 uint32_t TypeInt::DeserializeFrom(char *storage, Field **field, bool is_null) const {
   if (is_null) {
     *field = new Field(TypeId::kTypeInt);
@@ -102,8 +107,10 @@ uint32_t TypeInt::GetSerializedSize(const Field &field, bool is_null) const {
 }
 
 CmpBool TypeInt::CompareEquals(const Field &left, const Field &right) const {
-  ASSERT(left.CheckComparable(right), "Not comparable.");
-  if (left.IsNull() || right.IsNull()) {
+  // 首先包保证类型相同
+	ASSERT(left.CheckComparable(right), "Not comparable.");
+  // 如果有一方值为空，返回kNull，DBMS中值的比较要考虑空值的情况
+	if (left.IsNull() || right.IsNull()) {
     return CmpBool::kNull;
   }
   return GetCmpBool(left.value_.integer_ == right.value_.integer_);
@@ -228,6 +235,8 @@ CmpBool TypeFloat::CompareGreaterThanEquals(const Field &left, const Field &righ
 uint32_t TypeChar::SerializeTo(const Field &field, char *buf) const {
   if (!field.IsNull()) {
     uint32_t len = GetLength(field);
+		// 内存:  len				data
+		//        uint32_t  char[len]
     memcpy(buf, &len, sizeof(uint32_t));
     memcpy(buf + sizeof(uint32_t), field.value_.chars_, len);
     return len + sizeof(uint32_t);
@@ -241,6 +250,7 @@ uint32_t TypeChar::DeserializeFrom(char *storage, Field **field, bool is_null) c
     return 0;
   }
   uint32_t len = MACH_READ_UINT32(storage);
+	// 在Field构造函数中从内存中读取数据
   *field = new Field(TypeId::kTypeChar, storage + sizeof(uint32_t), len, true);
   return len + sizeof(uint32_t);
 }

@@ -9,7 +9,11 @@
 #include "record/type_id.h"
 #include "record/types.h"
 
+/**
+* \brief 域：对应于一条记录中某一个字段的数据信息,如存储数据的数据类型，是否是空，存储数据的值等
+*/
 class Field {
+	// 定义友元类，Type等可以是同Field的成员函数
   friend class Type;
 
   friend class TypeInt;
@@ -22,6 +26,7 @@ class Field {
   explicit Field(const TypeId type) : type_id_(type), len_(FIELD_NULL_LEN), is_null_(true) {}
 
   ~Field() {
+		// char类型的数据存放在程序手动new的内存中，所以要单独释放
     if (type_id_ == TypeId::kTypeChar && manage_data_) {
       delete[] value_.chars_;
     }
@@ -51,6 +56,7 @@ class Field {
       manage_data_ = false;
     } else {
       if (manage_data) {
+				// 在len >= VARCHAR_MAX_LEN的时候会终止程序
         ASSERT(len < VARCHAR_MAX_LEN, "Field length exceeds max varchar length");
         value_.chars_ = new char[len];
         memcpy(value_.chars_, data, len);
@@ -97,8 +103,10 @@ class Field {
 
   inline uint32_t GetSerializedSize() const { return Type::GetInstance(type_id_)->GetSerializedSize(*this, is_null_); }
 
+	// 判断数据类型是否相同
   inline bool CheckComparable(const Field &o) const { return type_id_ == o.type_id_; }
 
+	// 下面是实现两个相同数据类型的对象的比较：==,!=,<,<=,>,>=
   inline CmpBool CompareEquals(const Field &o) const { return Type::GetInstance(type_id_)->CompareEquals(*this, o); }
 
   inline CmpBool CompareNotEquals(const Field &o) const {
@@ -122,6 +130,7 @@ class Field {
   }
 
   friend void Swap(Field &first, Field &second) {
+		// 交换两个对象的值
     std::swap(first.value_, second.value_);
     std::swap(first.type_id_, second.type_id_);
     std::swap(first.len_, second.len_);
@@ -140,11 +149,13 @@ class Field {
       char temp[len_ + 1];
       memcpy(temp, value_.chars_, len_);
       temp[len_] = '\0';
+			// {}实现列表初始化，参数是字符指针，返回std::string
       return {temp};
     }
   }
 
  protected:
+	// 实现三者共用一块内存
   union Val {
     int32_t integer_;
     float float_;
@@ -153,7 +164,7 @@ class Field {
   TypeId type_id_;
   uint32_t len_;
   bool is_null_{false};
-  bool manage_data_{false};
+  bool manage_data_{false}; // 是否具有数据的所有权
 };
 
 #endif  // MINISQL_FIELD_H

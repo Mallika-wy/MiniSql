@@ -16,6 +16,7 @@ class Schema {
       : columns_(std::move(columns)), is_manage_(is_manage_) {}
 
   ~Schema() {
+		// 如果具有数据所有权的话，需要在析构的时候释放内存
     if (is_manage_) {
       for (auto column : columns_) {
         delete column;
@@ -23,8 +24,10 @@ class Schema {
     }
   }
 
+	// 返回一个引用
   inline const std::vector<Column *> &GetColumns() const { return columns_; }
 
+	// 获得指定下标的column
   inline const Column *GetColumn(const uint32_t column_index) const { return columns_[column_index]; }
 
   dberr_t GetColumnIndex(const std::string &col_name, uint32_t &index) const {
@@ -37,6 +40,7 @@ class Schema {
     return DB_COLUMN_NAME_NOT_EXIST;
   }
 
+	// static_cast强制类型转换
   inline uint32_t GetColumnCount() const { return static_cast<uint32_t>(columns_.size()); }
 
   /**
@@ -51,7 +55,7 @@ class Schema {
     for (const auto i : attrs) {
       cols.emplace_back(table_schema->columns_[i]);
     }
-    return new Schema(cols, false);
+    return new Schema(cols, false); // false参数意味着这个没有数据所有权，因为这是浅拷贝
   }
 
   /**
@@ -59,6 +63,7 @@ class Schema {
    */
   static Schema *DeepCopySchema(const Schema *from) {
     std::vector<Column *> cols;
+		// 每一个column都要被复制一次
     for (uint32_t i = 0; i < from->GetColumnCount(); i++) {
       cols.push_back(new Column(from->GetColumn(i)));
     }
@@ -83,9 +88,10 @@ class Schema {
  private:
   static constexpr uint32_t SCHEMA_MAGIC_NUM = 200715;
   std::vector<Column *> columns_;
+	// 数据所有权
   bool is_manage_ = false; /** if false, don't need to delete pointer to column */
 };
 
-using IndexSchema = Schema;
-using TableSchema = Schema;
+using IndexSchema = Schema; // 索引模式
+using TableSchema = Schema; // 表模式
 #endif

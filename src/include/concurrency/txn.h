@@ -8,15 +8,24 @@
 #include "common/rowid.h"
 
 /**
- * Transaction isolation level.
+ * Transaction isolation level. 事务隔离级别
+ * kReadUncommitted 读取未提交
+ * kReadCommitted 读取已提交
+ * kRepeatedRead 可重复读
+ * 级别由低到高
  */
 enum class IsolationLevel { kReadUncommitted, kReadCommitted, kRepeatedRead };
 
 /**
  * Reason to a transaction abortion
+ * kLockOnShrinking 事务在收缩阶段(即准备提交阶段)尝试申请锁
+ * kUnlockOnShrinking 事务在收缩阶段尝试解锁
+ * kUpgradeConflict 事务尝试升级锁，即将共享锁升级为独占锁，但是发生了冲突
+ * kDeadlock 死锁
+ * kLockSharedOnReadUncommitted 在读未提交（read uncommitted）隔离级别下，事务尝试申请共享锁
  */
 enum class AbortReason {
-  kLockOnShrinking,
+  kLockOnShrinking, 
   kUnlockOnShrinking,
   kUpgradeConflict,
   kDeadlock,

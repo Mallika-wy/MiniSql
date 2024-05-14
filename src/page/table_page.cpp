@@ -6,13 +6,14 @@ void TablePage::Init(page_id_t page_id, page_id_t prev_id, LogManager *log_mgr, 
   memcpy(GetData(), &page_id, sizeof(page_id));
   SetPrevPageId(prev_id);
   SetNextPageId(INVALID_PAGE_ID);
-  SetFreeSpacePointer(PAGE_SIZE);
-  SetTupleCount(0);
+  SetFreeSpacePointer(PAGE_SIZE); // 一开始FreeSpacePointer在Page的最后，所以设置成PAGE_SIZE
+  SetTupleCount(0); // 一开始TupleCount为0
 }
 
 bool TablePage::InsertTuple(Row &row, Schema *schema, Txn *txn, LockManager *lock_manager, LogManager *log_manager) {
   uint32_t serialized_size = row.GetSerializedSize(schema);
   ASSERT(serialized_size > 0, "Can not have empty row.");
+	// 记录一条数据需要数据本身的空间加上Tuple
   if (GetFreeSpaceRemaining() < serialized_size + SIZE_TUPLE) {
     return false;
   }
@@ -62,7 +63,7 @@ bool TablePage::MarkDelete(const RowId &rid, Txn *txn, LockManager *lock_manager
   return true;
 }
 
-bool TablePage::UpdateTuple(const Row &new_row, Row *old_row, Schema *schema, Txn *txn, LockManager *lock_manager,
+int TablePage::UpdateTuple(const Row &new_row, Row *old_row, Schema *schema, Txn *txn, LockManager *lock_manager,
                             LogManager *log_manager) {
   ASSERT(old_row != nullptr && old_row->GetRowId().Get() != INVALID_ROWID.Get(), "invalid old row.");
   uint32_t serialized_size = new_row.GetSerializedSize(schema);
@@ -70,16 +71,16 @@ bool TablePage::UpdateTuple(const Row &new_row, Row *old_row, Schema *schema, Tx
   uint32_t slot_num = old_row->GetRowId().GetSlotNum();
   // If the slot number is invalid, abort.
   if (slot_num >= GetTupleCount()) {
-    return false;
+    return 2;
   }
   uint32_t tuple_size = GetTupleSize(slot_num);
   // If the tuple is deleted, abort.
   if (IsDeleted(tuple_size)) {
-    return false;
+    return 2;
   }
   // If there is not enough space to update, we need to update via delete followed by an insert (not enough space).
   if (GetFreeSpaceRemaining() + tuple_size < serialized_size) {
-    return false;
+    return 1;
   }
   // Copy out the old value.
   uint32_t tuple_offset = GetTupleOffsetAtSlot(slot_num);
@@ -100,14 +101,16 @@ bool TablePage::UpdateTuple(const Row &new_row, Row *old_row, Schema *schema, Tx
       SetTupleOffsetAtSlot(i, tuple_offset_i + tuple_size - new_row.GetSerializedSize(schema));
     }
   }
-  return true;
+  return 0;
 }
 
 void TablePage::ApplyDelete(const RowId &rid, Txn *txn, LogManager *log_manager) {
   uint32_t slot_num = rid.GetSlotNum();
   ASSERT(slot_num < GetTupleCount(), "Cannot have more slots than tuples.");
 
+	// 获得元组的偏移地址
   uint32_t tuple_offset = GetTupleOffsetAtSlot(slot_num);
+	// 获得元组的size
   uint32_t tuple_size = GetTupleSize(slot_num);
   // Check if this is a delete operation, i.e. commit a delete.
   if (IsDeleted(tuple_size)) {
@@ -167,6 +170,7 @@ bool TablePage::GetTuple(Row *row, Schema *schema, Txn *txn, LockManager *lock_m
 bool TablePage::GetFirstTupleRid(RowId *first_rid) {
   // Find and return the first valid tuple.
   for (uint32_t i = 0; i < GetTupleCount(); i++) {
+		// 因为有些记录被删除了，所以需要通过循环来挨个找
     if (!IsDeleted(GetTupleSize(i))) {
       first_rid->Set(GetTablePageId(), i);
       return true;

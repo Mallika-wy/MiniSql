@@ -7,14 +7,14 @@ bool TableHeap::InsertTuple(Row &row, Txn *txn) {
 	// 获得row序列化所需要的内存空间
 	uint32_t row_size = row.GetSerializedSize(schema_);
 	// 如果空间大于row类型支持的最大空间，一定不符合要求
-	if (row_size > SIZE_MAX_ROW) return false;
+	if (row_size > TablePage::SIZE_MAX_ROW) return false;
 
 	bool is_success_insert = false;
 	// 定义两个page_id_t，用于循环迭代找到能存入row的page
 	page_id_t cur_page_id = first_page_id_, prev_page_id = INVALID_PAGE_ID;
 	TablePage *page = nullptr;
 	while (1) {
-		page = reinterpret_cast<TablePage *>buffer_pool_manager_->FetchPage(cur_page_id);
+		page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(cur_page_id));
 		// 想必对于page进行操作的时候都需要加上一个锁 ？？？
 		page->WLatch();
 		bool is_success_insert = page->InsertTuple(row, schema_, txn, lock_manager_, log_manager_);
@@ -36,7 +36,7 @@ bool TableHeap::InsertTuple(Row &row, Txn *txn) {
 
 	// 申请一个新page，用于存放tuple
 	page_id_t new_page_id = INVALID_PAGE_ID;
-	TablePage *new_page = reinterpret_cast<TablePage *>buffer_pool_manager_->NewPage(new_page_id);
+	TablePage *new_page = reinterpret_cast<TablePage *>(buffer_pool_manager_->NewPage(new_page_id));
 	new_page->WLatch();
 	// 新申请的page需要初始化
 	new_page->Init(new_page_id, INVALID_PAGE_ID, log_manager_, txn);
@@ -70,7 +70,7 @@ bool TableHeap::MarkDelete(const RowId &rid, Txn *txn) {
 /**
  * TODO: Student Implement
  */
-bool TableHeap::UpdateTuple(const Row &row, const RowId &rid, Txn *txn) {
+bool TableHeap::UpdateTuple(Row &row, const RowId &rid, Txn *txn) {
 	// 获得待更新的tuple所在的page
 	auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(rid.GetPageId()));
   if (page == nullptr) {
@@ -79,7 +79,7 @@ bool TableHeap::UpdateTuple(const Row &row, const RowId &rid, Txn *txn) {
 	Row *old_row = new Row(rid);
 	this->GetTuple(old_row, txn);
   page->WLatch();
-	int state = page->UpdateTuple(row,, old_row, schema_, txn, lock_manager_, log_manager_);
+	int state = page->UpdateTuple(row, old_row, schema_, txn, lock_manager_, log_manager_);
   page->WUnlatch();
   buffer_pool_manager_->UnpinPage(page->GetTablePageId(), true);
 	delete old_row;
@@ -103,7 +103,7 @@ void TableHeap::ApplyDelete(const RowId &rid, Txn *txn) {
   // Step1: Find the page which contains the tuple.
   // Step2: Delete the tuple from the page.
 	auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(rid.GetPageId()));
-  assert(page != nullptr, "Page is nullptr");
+  assert(page != nullptr);
   page->WLatch();
   page->ApplyDelete(rid, txn, log_manager_);
   page->WUnlatch();
@@ -127,7 +127,7 @@ void TableHeap::RollbackDelete(const RowId &rid, Txn *txn) {
  */
 bool TableHeap::GetTuple(Row *row, Txn *txn) {
 	// 获得tuple所在的page
-	auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(rid.GetPageId()));
+	auto page = reinterpret_cast<TablePage *>(buffer_pool_manager_->FetchPage(row->GetRowId().GetPageId()));
   if (page == nullptr) {
     return false;
   }
@@ -160,7 +160,7 @@ TableIterator TableHeap::Begin(Txn *txn) {
 		if (page == nullptr) return End(); // 如果page无效，就返回一个无效迭代器
 		RowId *first_row_id = new RowId();
 		buffer_pool_manager_->UnpinPage(first_page_id_, false);
-		if (page->GetFirstTupleRid(first_page_id_)) {
+		if (page->GetFirstTupleRid(first_row_id)) {
 			return TableIterator(this, *first_row_id, txn);
 		} else {
 			return End(); // 如果获得失败，就返回一个无效迭代器

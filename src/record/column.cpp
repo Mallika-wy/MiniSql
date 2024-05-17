@@ -48,7 +48,7 @@ uint32_t Column::SerializeTo(char *buf) const {
   size_t name_len = name_.length();
 	MACH_WRITE_TO(size_t, buf+offset, name_len);
 	offset += sizeof(size_t);
-	memcpy(buf+offset, name_, name_len);
+	memcpy(buf+offset, &name_, name_len);
 	offset += name_len;
 	// type_序列化
 	MACH_WRITE_TO(TypeId, buf+offset, type_);
@@ -87,6 +87,7 @@ uint32_t Column::DeserializeFrom(char *buf, Column *&column) {
   }
 	
 	uint32_t offset = 0;
+	uint32_t size = 0;
 
 	// column判断
 	uint32_t column_magic_num = MACH_READ_UINT32(buf+offset);
@@ -104,7 +105,7 @@ uint32_t Column::DeserializeFrom(char *buf, Column *&column) {
 	offset += name_len;
 	
 	// 反序列化type_
-	TypeId type = MACH_READ_FROM(TypeId, buf+offset)
+	TypeId type = MACH_READ_FROM(TypeId, buf+offset);
 	offset += sizeof(TypeId);
 
 	// 反序列化len_

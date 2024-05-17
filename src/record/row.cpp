@@ -22,8 +22,10 @@ uint32_t Row::SerializeTo(char *buf, Schema *schema) const {
 			bit_map[i/8] |= (1 << ( 7-i%8 ));
 		}
 	}
+	// 将bit map拷贝到内存中,其也是序列化的一部分
 	memcpy(buf+offset, bit_map, byte_size);
-
+	// 偏移bit map的长度
+	offset += byte_size;
 	// 依次序列化field
 	for (int i = 0; i < field_count; i++) {
 		offset += fields_[i]->SerializeTo(buf+offset);
@@ -45,7 +47,7 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
 	offset += sizeof(uint32_t);
 
 	// 反序列化bit_map 
-	size_t bype_size = ceil(field_count*1.0/8);
+	size_t byte_size = ceil(field_count*1.0/8);
 	char *bit_map = new char[byte_size];
 	memcpy(bit_map, buf+offset, byte_size);
 	offset += byte_size;

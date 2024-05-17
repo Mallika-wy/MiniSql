@@ -37,9 +37,7 @@ bool TableIterator::operator==(const TableIterator &itr) const {
 }
 
 bool TableIterator::operator!=(const TableIterator &itr) const {
-  if(this->table_heap != itr.table_heap || this->row->GetRowId() != itr.row->GetRowId())
-    return true;
-  return false;
+	return !(*this == itr);
 }
 
 const Row &TableIterator::operator*() {
@@ -64,7 +62,7 @@ TableIterator &TableIterator::operator++() {
 	// ++iter：iter变成下一个，并返回下一个
 	BufferPoolManager* buffer_pool_manager = this->table_heap->buffer_pool_manager_;
 	TablePage* page = reinterpret_cast<TablePage*>(buffer_pool_manager->FetchPage(this->row->GetRowId().GetPageId()));
-	RowId next_row_id = new RowId();
+	RowId *next_row_id = new RowId();
 	// 尝试从当前page获得下一个tuple的id
 	bool flag = page->GetNextTupleRid(row->GetRowId(), next_row_id);
 	delete row; // 即时释放不需要的空间
@@ -87,7 +85,7 @@ TableIterator &TableIterator::operator++() {
 TableIterator TableIterator::operator++(int) {
 	// iter++：iter变成下一个，返回当前 
 	// 调用构造函数，保存一份当前的
-	TableIterator cur_iter(*this);
+	RowId row_id = this->row->GetRowId();
 	++(*this);
-	return cur_iter; 
+	return TableIterator(this->table_heap, row_id, this->txn); 
 }

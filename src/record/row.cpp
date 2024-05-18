@@ -55,7 +55,7 @@ uint32_t Row::DeserializeFrom(char *buf, Schema *schema) {
 	// 反序列化field
 	for (int i = 0; i < field_count; i++) {
 		Field * field;
-		bool is_null = bit_map[i] & (1 << (7-i%8)) != 0;
+		bool is_null = (bit_map[i/8] & (1 << (7-i%8)) != 0);
 		offset += Field::DeserializeFrom(buf+offset, schema->GetColumn(i)->GetType(), &field, is_null);
 		fields_.push_back(field);
 	}

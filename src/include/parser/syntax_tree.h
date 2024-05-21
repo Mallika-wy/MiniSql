@@ -7,6 +7,7 @@
 #include <stdlib.h>
 #include <string.h>
 
+// 定义了各种可能的语法节点类型
 typedef enum {
   kNodeUnknown,
   kNodeQuit,                 /** quit command */

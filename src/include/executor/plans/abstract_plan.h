@@ -26,6 +26,7 @@ enum class PlanType {
 };
 
 class AbstractPlanNode;
+//shared_ptr 智能指针
 using AbstractPlanNodeRef = std::shared_ptr<const AbstractPlanNode>;
 
 /**

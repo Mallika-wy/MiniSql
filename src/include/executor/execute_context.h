@@ -10,6 +10,7 @@
 #include "common/macros.h"
 #include "concurrency/txn.h"
 
+// 用于提供执行数据库操作所需的上下文环境
 class ExecuteContext {
  public:
   /**

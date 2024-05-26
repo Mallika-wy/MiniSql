@@ -432,7 +432,6 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 
 	for (int i = 0; i < columns_name.size(); i++) {
 		std::string column_name = columns_name[i];
-    string column_name=columns_name[i];
 		Column* column;
     if (columns_type[column_name] == kTypeInt) {
       column = new Column(column_name, kTypeInt, i, true, is_uniques[column_name]);

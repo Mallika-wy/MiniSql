@@ -96,7 +96,7 @@ uint32_t Column::DeserializeFrom(char *buf, Column *&column) {
 
 	// 反序列化name长度
 	size_t name_len = MACH_READ_FROM(size_t, buf+offset);
-	size += sizeof(size_t);
+	offset += sizeof(size_t);
 
 	// 反序列化name_
 	char* name_char = new char[name_len];

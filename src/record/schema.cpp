@@ -34,7 +34,7 @@ uint32_t Schema::SerializeTo(char *buf) const {
  */
 uint32_t Schema::GetSerializedSize() const {
 	uint32_t size = 0;
-	size += sizeof(uint32_t);
+	size += 2*sizeof(uint32_t);
   for (uint32_t i = 0; i < columns_.size(); ++i) {
 		size += columns_[i]->GetSerializedSize();
 	}
@@ -65,9 +65,7 @@ uint32_t Schema::DeserializeFrom(char *buf, Schema *&schema) {
 	std::vector<Column*> columns;
 	columns.resize(column_num);
 	for (uint32_t i=0; i < column_num; ++i) {
-		Column* column = nullptr;
-		offset += Column::DeserializeFrom(buf+offset, column);
-		columns.push_back(column);
+		offset += Column::DeserializeFrom(buf+offset, columns[i]);
 	}
 
 	// is_manage_序列化

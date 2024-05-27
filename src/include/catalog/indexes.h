@@ -65,9 +65,12 @@ class IndexInfo {
  */
   void Init(IndexMetadata *meta_data, TableInfo *table_info, BufferPoolManager *buffer_pool_manager) {
     // Step1: init index metadata and table info
+    meta_data_=meta_data;
     // Step2: mapping index key to key schema
+    std::vector<uint32_t> key_mapping=meta_data->GetKeyMapping();
+    key_schema_=key_schema_->ShallowCopySchema(table_info->GetSchema(),key_mapping);
     // Step3: call CreateIndex to create the index
-    ASSERT(false, "Not Implemented yet.");
+    index_ = CreateIndex(buffer_pool_manager,"bptree");
   }
 
   inline Index *GetIndex() { return index_; }

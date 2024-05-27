@@ -20,7 +20,11 @@ class ExecuteContext {
    * @param bpm The buffer pool manager that the executor uses
    */
   ExecuteContext(Txn *transaction, CatalogManager *catalog, BufferPoolManager *bpm)
-      : transaction_(transaction), catalog_{catalog}, bpm_{bpm} {}
+	{
+		this->transaction_ = transaction;
+		this->catalog_ = catalog;
+		this->bpm_ = bpm;
+	}
 
   ~ExecuteContext() = default;
 
@@ -30,7 +34,9 @@ class ExecuteContext {
   Txn *GetTransaction() const { return transaction_; }
 
   /** @return the catalog */
-  CatalogManager *GetCatalog() { return catalog_; }
+  CatalogManager *GetCatalog() { 
+		return catalog_; 
+	}
 
   /** @return the buffer pool manager */
   BufferPoolManager *GetBufferPoolManager() { return bpm_; }

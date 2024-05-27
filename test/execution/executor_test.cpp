@@ -8,6 +8,7 @@
 #include "executor/plans/values_plan.h"
 #include "executor_test_util.h"  // NOLINT
 
+
 // SELECT id FROM table-1 WHERE id < 500
 TEST_F(ExecutorTest, SimpleSeqScanTest) {
   // Construct query plan

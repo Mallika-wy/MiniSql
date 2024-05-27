@@ -59,7 +59,6 @@ class ExecutorTest : public ::testing::Test {
     }
     // Create an executor context for our executors
     exec_ctx_ = std::make_unique<ExecuteContext>(txn_, db_test_->catalog_mgr_, db_test_->bpm_);
-		catalog_01->CreateTable("table-1", schema, txn_, table_info);
     // Construct the executor engine for the test
     execution_engine_ = std::make_unique<ExecuteEngine>();
   }

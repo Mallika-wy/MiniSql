@@ -13,8 +13,13 @@ TableIterator是什么 : 堆表的迭代器
  * TODO: Student Implement
  */
 TableIterator::TableIterator(TableHeap *table_heap, RowId rid, Txn *txn) {
-	this->row = new Row(rid);
 	this->table_heap = table_heap;
+  if (rid.GetPageId() != INVALID_PAGE_ID) {
+    this->row=new Row(rid);
+    this->table_heap->GetTuple(this->row, nullptr);
+  } else {
+		this->row=new Row(INVALID_ROWID);
+	} 
 	this->txn = txn;
 }
 
@@ -50,12 +55,13 @@ Row *TableIterator::operator->() {
 }
 
 TableIterator &TableIterator::operator=(const TableIterator &itr) noexcept {
-  //ASSERT(false, "Not implemented yet.");
+//  ASSERT(false, "Not implemented yet.");
   this->table_heap = itr.table_heap;
-  this->row = itr.row;
+  this->row= new Row(*itr.row);
 	this->txn = itr.txn;
-  return *this;
+	return *this;
 }
+
 
 // ++iter
 TableIterator &TableIterator::operator++() {
@@ -73,9 +79,15 @@ TableIterator &TableIterator::operator++() {
 		// 如果不在当前page，就在下一个page
     page_id_t next_page_id = page->GetNextPageId();
     page = reinterpret_cast<TablePage *>(buffer_pool_manager->FetchPage(next_page_id));
-    page->GetFirstTupleRid(next_row_id);
-    this->row = new Row(*next_row_id);
-    page->GetTuple(this->row, this->table_heap->schema_, this->txn, this->table_heap->lock_manager_);
+		if (page == nullptr) {
+			next_row_id->Set(INVALID_PAGE_ID, 0);
+			this->row = new Row(*next_row_id);
+			this->table_heap = nullptr;
+		} else {
+			page->GetFirstTupleRid(next_row_id);
+			this->row = new Row(*next_row_id);
+			page->GetTuple(this->row, this->table_heap->schema_, this->txn, this->table_heap->lock_manager_);
+		}
   }
 	delete next_row_id;
   return *this;
@@ -86,6 +98,7 @@ TableIterator TableIterator::operator++(int) {
 	// iter++：iter变成下一个，返回当前 
 	// 调用构造函数，保存一份当前的
 	RowId row_id = this->row->GetRowId();
+	TableHeap* tmp_table_heap = this->table_heap;
 	++(*this);
-	return TableIterator(this->table_heap, row_id, this->txn); 
+	return TableIterator(tmp_table_heap, row_id, this->txn); 
 }

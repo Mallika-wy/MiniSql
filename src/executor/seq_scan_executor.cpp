@@ -41,7 +41,7 @@ void SeqScanExecutor::TupleTransfer(const Schema *table_schema, const Schema *ou
 void SeqScanExecutor::Init() {
   exec_ctx_->GetCatalog()->GetTable(plan_->GetTableName(), table_info_);
   auto first_row = table_info_->GetTableHeap()->Begin(nullptr);
-  iterator_ = (table_info_->GetTableHeap()->Begin(exec_ctx_->GetTransaction()));
+	iterator_ = table_info_->GetTableHeap()->Begin(exec_ctx_->GetTransaction());
   schema_ = plan_->OutputSchema();
   is_schema_same_ = SchemaEqual(table_info_->GetSchema(), schema_);
 }

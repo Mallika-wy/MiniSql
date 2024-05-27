@@ -17,7 +17,7 @@ TEST_F(ExecutorTest, SimpleSeqScanTest) {
   const Schema *schema = table_info->GetSchema();
   auto col_a = MakeColumnValueExpression(*schema, 0, "id");
   auto col_b = MakeColumnValueExpression(*schema, 0, "name");
-  auto const500 = MakeConstantValueExpression(Field(kTypeInt, 500));
+  auto const500 = MakeConstantValueExpression(Field(kTypeInt, 10));
   auto predicate = MakeComparisonExpression(col_a, const500, "<");
   auto out_schema = MakeOutputSchema({{"id", col_a}, {"name", col_b}});
   auto plan = make_shared<SeqScanPlanNode>(out_schema, table_info->GetTableName(), predicate);
@@ -26,7 +26,7 @@ TEST_F(ExecutorTest, SimpleSeqScanTest) {
   GetExecutionEngine()->ExecutePlan(plan, &result_set, GetTxn(), GetExecutorContext());
 
   // Verify
-  ASSERT_EQ(result_set.size(), 500);
+  ASSERT_EQ(result_set.size(), 10);
   for (const auto &row : result_set) {
     ASSERT_TRUE(row.GetField(0)->CompareLessThan(Field(kTypeInt, 500)));
   }
@@ -39,7 +39,7 @@ TEST_F(ExecutorTest, SimpleDeleteTest) {
   GetExecutorContext()->GetCatalog()->GetTable("table-1", table_info);
   const Schema *schema = table_info->GetSchema();
   auto col_id = MakeColumnValueExpression(*schema, 0, "id");
-  auto const50 = MakeConstantValueExpression(Field(kTypeInt, 50));
+  auto const50 = MakeConstantValueExpression(Field(kTypeInt, 5));
   auto predicate = MakeComparisonExpression(col_id, const50, "=");
   auto out_schema = MakeOutputSchema({{"id", col_id}});
   auto scan_plan = std::make_shared<SeqScanPlanNode>(out_schema, table_info->GetTableName(), predicate);
@@ -57,7 +57,7 @@ TEST_F(ExecutorTest, SimpleDeleteTest) {
   // Verify
   ASSERT_EQ(result_set.size(), 1);
   for (const auto &row : result_set) {
-    ASSERT_TRUE(row.GetField(0)->CompareEquals(Field(kTypeInt, 50)));
+    ASSERT_TRUE(row.GetField(0)->CompareEquals(Field(kTypeInt, 5)));
   }
 
   // DELETE FROM table-1 WHERE id == 50

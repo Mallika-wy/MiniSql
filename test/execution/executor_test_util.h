@@ -46,7 +46,7 @@ class ExecutorTest : public ::testing::Test {
     auto schema = new Schema(columns);
     catalog_01->CreateTable("table-1", schema, txn_, table_info);
     TableHeap *table_heap = table_info->GetTableHeap();
-    for (int i = 0; i < 10; i++) {
+    for (int i = 0; i < 1000; i++) {
       int32_t len = RandomUtils::RandomInt(0, 64);
       char *characters = new char[len];
       RandomUtils::RandomString(characters, len);

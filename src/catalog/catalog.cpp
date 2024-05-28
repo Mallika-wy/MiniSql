@@ -166,56 +166,48 @@ dberr_t CatalogManager::GetTables(vector<TableInfo *> &tables) const {
 dberr_t CatalogManager::CreateIndex(const std::string &table_name, const string &index_name,
                                     const std::vector<std::string> &index_keys, Txn *txn, IndexInfo *&index_info,
                                     const string &index_type) {
-  auto temp = table_names_.find(table_name);
-  //search for certain table, if fail, return DB_TABLE_NOT_EXIST
-  if(temp == table_names_.end()){
-      return DB_TABLE_NOT_EXIST;
-  }
-  //if index already exists, return DB_INDEX_ALREADY_EXIST
-  if(index_names_[table_name].find(index_name) != index_names_[table_name].end()){
-      return DB_INDEX_ALREADY_EXIST;
-  }
-  table_id_t table_id = temp->second;
-  auto columns = tables_[table_id]->GetSchema()->GetColumns();
+  // ASSERT(false, "Not Implemented yet");
+  dberr_t dberr= GetIndex(table_name,index_name,index_info);
+  if(dberr!=DB_INDEX_NOT_FOUND) return dberr==DB_SUCCESS?DB_INDEX_ALREADY_EXIST:dberr;
+  index_id_t index_id=this->next_index_id_++;
+  table_id_t table_id=table_names_[table_name];
+  TableInfo* table_info=tables_[table_id];
+  uint32_t col_index;
   std::vector<uint32_t> key_map;
-  int flag;
-  //if col_name doesn't exist, return DB_COLUMN_NAME_NOT_EXIST
-  for(auto i:index_keys){
-      flag = 0;
-      for(auto j:columns){
-        if(i == j->GetName()){
-          flag = 1;
-          key_map.push_back(j->GetTableInd());
-          break;
-        }
-      }
-      if(flag == 0){
-        return DB_COLUMN_NAME_NOT_EXIST;
-      }
+  for(auto key:index_keys){
+    if(table_info->GetSchema()->GetColumnIndex(key,col_index)==DB_COLUMN_NAME_NOT_EXIST)
+      return DB_COLUMN_NAME_NOT_EXIST;
+    key_map.push_back(col_index);
   }
-  //create a new page in the buffer to store the index page
-  page_id_t index_page_id;
-  Page* index_page = buffer_pool_manager_->NewPage(index_page_id);
-  IndexMetadata *index_meta = IndexMetadata::Create(next_index_id_,index_name,table_id,key_map);
-  index_meta->SerializeTo(index_page->GetData());
-  index_info = IndexInfo::Create();
-  index_info->Init(index_meta,tables_[table_id],buffer_pool_manager_);
-  buffer_pool_manager_->UnpinPage(index_page_id,true);
-
-  catalog_meta_->index_meta_pages_[next_index_id_]=index_page_id;
-  auto catalog_meta_page = buffer_pool_manager_->FetchPage(CATALOG_META_PAGE_ID);
-  catalog_meta_->SerializeTo(catalog_meta_page->GetData());
-  buffer_pool_manager_->UnpinPage(CATALOG_META_PAGE_ID,true);
-  if(index_names_.find(table_name) == index_names_.end()){
-      std::unordered_map<std::string, index_id_t> new_map;
-      new_map[index_name]=next_index_id_;
-      index_names_[table_name]=new_map;
+  IndexMetadata* meta_data=IndexMetadata::Create(index_id,index_name,table_id,key_map);
+  index_info=IndexInfo::Create();
+  index_info->Init(meta_data,table_info,buffer_pool_manager_);
+  //将table中原有的数据插入索引中
+  auto itr=table_info->GetTableHeap()->Begin(txn);
+  vector<uint32_t> column_ids;
+  vector<Column *> columns = index_info->GetIndexKeySchema()->GetColumns();
+  for (auto column : columns) {
+    uint32_t column_id;
+    if (table_info->GetSchema()->GetColumnIndex(column->GetName(), column_id) == DB_SUCCESS)
+      column_ids.push_back(column_id);
   }
-  else{
-      ((index_names_.find(table_name))->second)[index_name]=next_index_id_;
+  for(;itr!=table_info->GetTableHeap()->End();itr++){
+    Row tmp=*itr;
+    vector<Field> fields;
+    for (auto column_id : column_ids) fields.push_back(*tmp.GetField(column_id));
+    Row index_row(fields);
+    index_info->GetIndex()->InsertEntry(index_row,tmp.GetRowId(),txn);
   }
-  indexes_[next_index_id_]=index_info;
-  next_index_id_++;
+  //找个page写元数据
+  page_id_t page_id;
+  Page* page=buffer_pool_manager_->NewPage(page_id);
+  meta_data->SerializeTo(page->GetData());
+  buffer_pool_manager_->UnpinPage(page_id,true);
+  //更新table_names&indexes
+  index_names_[table_name][index_name]=index_id;
+  indexes_[index_id]=index_info;
+  //更新catalog_meta_data
+  catalog_meta_->index_meta_pages_[index_id]=page_id;
   return DB_SUCCESS;
 }
 /**

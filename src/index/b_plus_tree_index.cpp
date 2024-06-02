@@ -36,7 +36,11 @@ dberr_t BPlusTreeIndex::RemoveEntry(const Row &key, RowId row_id, Txn *txn) {
 }
 
 dberr_t BPlusTreeIndex::ScanKey(const Row &key, vector<RowId> &result, Txn *txn, string compare_operator) {
-  GenericKey *index_key = processor_.InitKey();
+  if (container_.IsEmpty()) {
+		result.clear();
+		return DB_SUCCESS;
+	}
+	GenericKey *index_key = processor_.InitKey();
   processor_.SerializeFromKey(index_key, key, key_schema_);
   auto end_iter = GetEndIterator();
   if (compare_operator == "=") {

@@ -3,7 +3,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
+#include <cstring>
 #include <chrono>
 
 #include "common/result_writer.h"
@@ -381,6 +381,8 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 	std::unordered_map<std::string, TypeId> columns_type;
 	// 存储unique信息
 	std::unordered_map<std::string, bool> is_uniques;
+	// 存储是否是主键
+	std::unordered_map<std::string, bool> is_primarys;
 	// 存储len
 	std::unordered_map<std::string, int> string_lens;
 	// 存储primary_key
@@ -395,7 +397,11 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 			std::string column_name = column_node->child_->val_;
 			columns_name.push_back(column_name);
 			// 获取unique信息
-			bool is_unique = (column_node->val_ == "unique");
+			bool is_unique = false;
+			if (column_node->val_ != nullptr) {
+ 				is_unique = (strcmp(column_node->val_, "unique") == 0);
+			}
+			is_primarys[column_name] = false;
 			is_uniques[column_name] = is_unique;
 			// 获取type信息
 			std::string type_string = column_node->child_->next_->val_;
@@ -421,7 +427,7 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 			while (primary_key_node != nullptr) {
 				string primary_key = primary_key_node->val_;
 				// primary_key意味着这个字段是unique的
-				is_uniques[primary_key] = true;
+				is_primarys[primary_key] = true;
 				// 添加到primary_keys中,用于index的生成
 				primary_keys.push_back(primary_key);
 				primary_key_node = primary_key_node->next_;
@@ -434,11 +440,11 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
 		std::string column_name = columns_name[i];
 		Column* column;
     if (columns_type[column_name] == kTypeInt) {
-      column = new Column(column_name, kTypeInt, i, true, is_uniques[column_name]);
+      column = new Column(column_name, kTypeInt, i, true, is_uniques[column_name] || is_primarys[column_name]);
 		} else if (columns_type[column_name] == kTypeFloat ) {
-      column = new Column(column_name, kTypeFloat, i, true, is_uniques[column_name]);
+      column = new Column(column_name, kTypeFloat, i, true, is_uniques[column_name] || is_primarys[column_name]);
 		} else if (columns_type[column_name] == kTypeChar) {
-      column = new Column(column_name, kTypeChar, string_lens[column_name], i, true, is_uniques[column_name]);
+      column = new Column(column_name, kTypeChar, string_lens[column_name], i, true, is_uniques[column_name] || is_primarys[column_name]);
 		} else {
       cout<<"unknown type"<<endl;
       return DB_FAILED;
@@ -452,9 +458,24 @@ dberr_t ExecuteEngine::ExecuteCreateTable(pSyntaxNode ast, ExecuteContext *conte
   if(result == DB_TABLE_ALREADY_EXIST){
     return DB_TABLE_ALREADY_EXIST;
   }
-  string index_name = table_name+"_primary_key_index";//
+
+  string index_name = table_name+"_primary_key_index";
   IndexInfo *index_info;
-  return catalog_manager->CreateIndex(table_name, index_name, primary_keys, context->GetTransaction(), index_info, "bptree");
+  result =  catalog_manager->CreateIndex(table_name, index_name, primary_keys, context->GetTransaction(), index_info, "bptree");
+	if (result != DB_SUCCESS) {
+		return result;
+	}
+
+	for (int i = 0; i < columns_name.size(); i++) {
+		if (!is_uniques[columns_name[i]]) continue;
+		index_name = table_name + "_unique_index_" + columns_name[i];
+		vector<std::string> index_key;
+		index_key.push_back(columns_name[i]);
+		result =  catalog_manager->CreateIndex(table_name, index_name, index_key, context->GetTransaction(), index_info, "bptree");
+		if (result != DB_SUCCESS) 
+			return result; 
+	}
+	return DB_SUCCESS;
 }
 
 /**

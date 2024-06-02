@@ -266,7 +266,7 @@ void BPlusTree::Remove(const GenericKey *key, Txn *transaction) {
     }
     if(page->IsRootPage()){
         int size = page->GetSize();
-        if((AdjustRoot(page))&&(size == 0)){
+        if((size == 0)&&(AdjustRoot(page))){
             LOG(WARNING)<<"there is nothing in the b+ tree now"<<std::endl;
             buffer_pool_manager_->UnpinPage(page->GetPageId(),true);
             if(!buffer_pool_manager_->DeletePage(page->GetPageId())){
@@ -576,6 +576,7 @@ Page *BPlusTree::FindLeafPage(const GenericKey *key, page_id_t page_id, bool lef
             next_page_id = temp->ValueAt(0);
         } else {
             // Otherwise, use the Lookup function to find the correct child
+
             next_page_id = temp->Lookup(key, processor_);
         }
         // Fetch the next page

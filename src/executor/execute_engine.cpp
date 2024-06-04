@@ -35,9 +35,7 @@ ExecuteEngine::ExecuteEngine() {
     mkdir("./databases", 0777);
     dir = opendir(path);
   }
-  /** When you have completed all the code for
-   *  the test, run it using main.cpp and uncomment
-   *  this part of the code.
+
   struct dirent *stdir;
   while((stdir = readdir(dir)) != nullptr) {
 		// 过滤掉上层文件夹,上上层文件夹,忽略文件三种类型
@@ -48,7 +46,6 @@ ExecuteEngine::ExecuteEngine() {
 		// 已经存在这个数据库文件,所以init参数为false
     dbs_[stdir->d_name] = new DBStorageEngine(stdir->d_name, false);
   }
-   **/
   closedir(dir);
 }
 

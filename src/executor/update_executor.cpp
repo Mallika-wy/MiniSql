@@ -20,15 +20,26 @@ bool UpdateExecutor::Next([[maybe_unused]] Row *row, RowId *rid) {
   RowId src_rid;
   if (child_executor_->Next(&src_row, &src_rid)) {
     Row dest_row = GenerateUpdatedTuple(src_row);
+    // 更新数据行
     if (!table_info_->GetTableHeap()->UpdateTuple(dest_row, src_rid, txn_)) {
       return false;
     }
     Row src_key_row;
     Row dest_key_row;
-    for (auto info : index_info_) {  // 更新索引
+    for (auto info : index_info_) {
       src_row.GetKeyFromRow(table_info_->GetSchema(), info->GetIndexKeySchema(), src_key_row);
       dest_row.GetKeyFromRow(table_info_->GetSchema(), info->GetIndexKeySchema(), dest_key_row);
+      // 检查是否存在重复索引项
+      vector<RowId> rids;
+      if (info->GetIndex()->ScanKey(dest_key_row, rids, exec_ctx_->GetTransaction(), "=") == DB_SUCCESS) {
+        if (!rids.empty()) {
+          cout << "Duplicated Entry for key " << info->GetIndexName() << endl;
+          return false;
+        }
+      }
+      // 删除旧的索引项
       info->GetIndex()->RemoveEntry(src_key_row, src_rid, txn_);
+      // 插入新的索引项
       info->GetIndex()->InsertEntry(dest_key_row, src_rid, txn_);
     }
     return true;

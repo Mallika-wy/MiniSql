@@ -12,17 +12,20 @@ SeqScanExecutor::SeqScanExecutor(ExecuteContext *exec_ctx, const SeqScanPlanNode
 bool SeqScanExecutor::SchemaEqual(const Schema *table_schema, const Schema *output_schema) {
   auto table_columns = table_schema->GetColumns();
   auto output_columns = output_schema->GetColumns();
+  // 比较列的数量是否相等
   if (table_columns.size() != output_columns.size()) {
     return false;
   }
-  int col_size = table_columns.size();
-  for (int i = 0; i < col_size; i++) {
-    if ((table_columns[i]->GetName() != output_columns[i]->GetName()) ||
-        (table_columns[i]->GetType() != output_columns[i]->GetType()) ||
-        (table_columns[i]->GetLength() != output_columns[i]->GetLength())) {
+
+  // 逐列比较名称、类型和长度是否相同
+  for (size_t i = 0; i < table_columns.size(); ++i) {
+    if (table_columns[i]->GetName() != output_columns[i]->GetName() ||
+        table_columns[i]->GetType() != output_columns[i]->GetType() ||
+        table_columns[i]->GetLength() != output_columns[i]->GetLength()) {
       return false;
     }
   }
+
   return true;
 }
 
@@ -31,10 +34,13 @@ void SeqScanExecutor::TupleTransfer(const Schema *table_schema, const Schema *ou
   const auto &output_columns = output_schema->GetColumns();
   std::vector<Field> dest_row;
   dest_row.reserve(output_columns.size());
-  for (const auto column : output_columns) {
+
+  // 将每个输出列对应的字段添加到新的行中
+  for (const auto &column : output_columns) {
     auto idx = column->GetTableInd();
     dest_row.emplace_back(*row->GetField(idx));
   }
+
   *output_row = Row(dest_row);
 }
 
@@ -48,22 +54,23 @@ void SeqScanExecutor::Init() {
 
 bool SeqScanExecutor::Next(Row *row, RowId *rid) {
   auto predicate = plan_->GetPredicate();
-  auto table_schema = table_info_->GetSchema();
+  const auto *table_schema = table_info_->GetSchema();
+  // 遍历表中的行
   while (iterator_ != table_info_->GetTableHeap()->End()) {
-    auto p_row = &(*iterator_);
-    if (predicate != nullptr) {
-      if (!predicate->Evaluate(p_row).CompareEquals(Field(kTypeInt, 1))) {
-        iterator_++;
-        continue;
-      }
+    const Row &current_row = *iterator_;
+    // 如果有谓词，进行过滤
+    if (predicate && !predicate->Evaluate(&current_row).CompareEquals(Field(kTypeInt, 1))) {
+      ++iterator_;
+      continue;
     }
-    *rid = iterator_->GetRowId();
+    *rid = current_row.GetRowId();
+    // 根据 Schema 是否相同进行行转换
     if (!is_schema_same_) {
-      TupleTransfer(table_schema, schema_, p_row, row);
+      TupleTransfer(table_schema, schema_, &current_row, row);
     } else {
-      *row = *p_row;
+      *row = current_row;
     }
-    iterator_++;
+    ++iterator_;
     return true;
   }
   return false;

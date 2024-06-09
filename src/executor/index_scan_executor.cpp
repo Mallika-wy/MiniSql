@@ -18,9 +18,11 @@ void IndexScanExecutor::Init() {
 bool IndexScanExecutor::SchemaEqual(const Schema *table_schema, const Schema *output_schema) {
   auto table_columns = table_schema->GetColumns();
   auto output_columns = output_schema->GetColumns();
+  // 比较列的数量是否相等
   if (table_columns.size() != output_columns.size()) {
     return false;
   }
+  // 逐列比较名称、类型和长度是否相同
   int col_size = table_columns.size();
   for (int i = 0; i < col_size; i++) {
     if ((table_columns[i]->GetName() != output_columns[i]->GetName()) ||
@@ -37,6 +39,7 @@ void IndexScanExecutor::TupleTransfer(const Schema *table_schema, const Schema *
   const auto &output_columns = output_schema->GetColumns();
   std::vector<Field> dest_row;
   dest_row.reserve(output_columns.size());
+  // 将每个输出列对应的字段添加到新的行中
   for (const auto column : output_columns) {
     auto idx = column->GetTableInd();
     dest_row.emplace_back(*row->GetField(idx));
@@ -47,6 +50,7 @@ void IndexScanExecutor::TupleTransfer(const Schema *table_schema, const Schema *
 vector<RowId> IndexScanExecutor::IndexScan(AbstractExpressionRef predicate) {
   switch (predicate->GetType()) {
     case ExpressionType::LogicExpression: {
+      // 递归处理逻辑表达式，合并结果
       vector<RowId> lhs = IndexScan(predicate->GetChildAt(0));
       vector<RowId> rhs = IndexScan(predicate->GetChildAt(1));
       if (lhs.empty()) return rhs;
@@ -79,9 +83,11 @@ vector<RowId> IndexScanExecutor::IndexScan(AbstractExpressionRef predicate) {
 bool IndexScanExecutor::Next(Row *row, RowId *rid) {
   auto predicate = plan_->GetPredicate();
   auto table_schema = table_info_->GetSchema();
+  // 遍历索引扫描结果
   while (cursor_ < result_.size()) {
     auto p_row = new Row(result_[cursor_]);
     table_info_->GetTableHeap()->GetTuple(p_row, nullptr);
+    // 根据谓词过滤结果
     if (plan_->need_filter_) {
       if (!predicate->Evaluate(p_row).CompareEquals(Field(kTypeInt, 1))) {
         cursor_++;
@@ -89,6 +95,7 @@ bool IndexScanExecutor::Next(Row *row, RowId *rid) {
       }
     }
     *rid = result_[cursor_];
+    // 根据 Schema 是否相同进行行转换
     if (!is_schema_same_) {
       TupleTransfer(table_schema, plan_->OutputSchema(), p_row, row);
     } else {

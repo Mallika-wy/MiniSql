@@ -48,7 +48,7 @@ uint32_t Column::SerializeTo(char *buf) const {
   size_t name_len = name_.length();
 	MACH_WRITE_TO(size_t, buf+offset, name_len);
 	offset += sizeof(size_t);
-	memcpy(buf+offset, &name_, name_len);
+	MACH_WRITE_STRING(buf+offset, this->name_);
 	offset += name_len;
 	// type_序列化
 	MACH_WRITE_TO(TypeId, buf+offset, type_);
